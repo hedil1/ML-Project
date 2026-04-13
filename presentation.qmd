@@ -1,0 +1,124 @@
+---
+title: "🚦 Prédiction des Passages à Niveau Dangereux"
+author: "Ton Nom"
+format:
+  revealjs:
+    theme: [dark, custom.scss]
+    slide-number: true
+    code-tools: true
+    transition: fade
+    progress: true
+    center: true
+    controls: true
+    highlight-style: github
+    background-transition: fade
+---
+
+
+## 🚦 Introduction
+
+Ce projet applique le Machine Learning pour analyser la sécurité des passages à niveau en Tunisie.
+
+🎯 Objectif :
+- Étudier les données
+- Construire des modèles ML
+- Prédire les zones dangereuses
+
+
+## 🎯 Problématique
+
+Peut-on prédire si un passage à niveau est :
+
+✔ dangereux  
+❌ non dangereux  
+
+à partir de ses caractéristiques ?
+
+## 📊 Dataset & Prétraitement
+
+✔ Nettoyage des données  
+✔ Encodage des variables  
+✔ Normalisation  
+✔ Feature engineering  
+
+📁 Dataset : dataset_final.xlsx
+
+
+## ⚙️ Pipeline Machine Learning
+
+1. Chargement des données  
+2. Préprocessing  
+3. Split Train/Test  
+4. Entraînement des modèles  
+5. Évaluation  
+6. Comparaison
+
+## 🤖 Modèles testés
+
+```{python}
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+
+rf = Pipeline([
+    ("model", RandomForestClassifier(n_estimators=200, random_state=42))
+])
+
+scores = cross_val_score(rf, X, y, cv=5)
+
+print("Random Forest Accuracy:", scores.mean())
+
+
+---
+
+# 📌 SLIDE 6 — AUTRES MODÈLES
+
+```markdown id="s6"
+## ⚡ Comparaison des modèles
+
+```{python}
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+
+svm = SVC(kernel="rbf")
+knn = KNeighborsClassifier(n_neighbors=5)
+
+print("SVM:", cross_val_score(svm, X, y, cv=5).mean())
+print("KNN:", cross_val_score(knn, X, y, cv=5).mean())
+
+
+---
+
+# 📌 SLIDE 7 — RÉSULTATS
+
+```markdown id="s7"
+## 📈 Résultats
+
+| Modèle            | Accuracy |
+|------------------|----------|
+| Random Forest    | 1.00     |
+| XGBoost          | 0.98     |
+| SVM              | 0.94     |
+| KNN              | 0.90     |
+
+🏆 Meilleur modèle : Random Forest
+
+
+## 🧠 Conclusion
+
+✔ Pipeline ML complet  
+✔ Bonne performance globale  
+✔ Random Forest le plus stable  
+
+⚠️ Limites :
+- dataset limité
+- possible overfitting (accuracy très haute)
+- besoin de plus de données réelles
+
+🚀 Perspectives :
+- amélioration des features
+- déploiement Streamlit
+- optimisation hyperparamètres
+
+
+

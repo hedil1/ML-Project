@@ -1,0 +1,4 @@
+Model,Accuracy
+Logistic,0.7288135593220338
+DecisionTree,0.7288135593220338
+RandomForest,0.7288135593220338

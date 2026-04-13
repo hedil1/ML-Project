@@ -1,0 +1,37 @@
+/*-- scss:defaults --*/
+
+/* 🌑 Couleurs principales */
+$body-bg: #0f172a;
+$body-color: #ffffff;
+$link-color: #38bdf8;
+
+/*-- scss:rules --*/
+
+/* 🎨 Style global */
+.reveal {
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* 🟦 Titres */
+.reveal h1, .reveal h2 {
+  color: #38bdf8;
+  text-align: left;
+}
+
+/* 📌 Slides */
+.reveal section {
+  text-align: left;
+}
+
+/* 💻 Code */
+.reveal code {
+  background-color: #111827;
+  color: #22c55e;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+/* 📊 Table */
+table {
+  border-radius: 10px;
+}
