@@ -7,17 +7,12 @@ from sklearn.cluster import KMeans
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-from xgboost import XGBClassifier
-import os
 
 # =========================
 # CONFIG
 # =========================
-st.set_page_config(page_title=" Smart PN Dashboard", layout="wide")
-st.title(" Smart Dashboard - Zones Dangereuses 🇹🇳")
+st.set_page_config(page_title="🚦 Smart PN Dashboard", layout="wide")
+st.title("🚦 Smart Dashboard - Zones Dangereuses 🇹🇳")
 
 # =========================
 # SESSION STATE
@@ -32,11 +27,10 @@ df = pd.read_excel("dataset_final.xlsx")
 df.columns = df.columns.str.strip()
 
 df["Dangereux"] = (df["Tués"] > 0).astype(int)
-
 df["Arrondissement"] = df["Zone"] + "_" + df["Gouvernorat"]
 
 # =========================
-# GPS TUNISIE
+# GPS
 # =========================
 coords = {
     "TN": (36.8, 10.18), "BR": (36.74, 10.21), "MN": (36.80, 10.09),
@@ -62,7 +56,7 @@ df["Longitude"] = df["Gouvernorat"].map(
 )
 
 # =========================
-# CLEAN DATA (IMPORTANT FIX)
+# CLEAN DATA
 # =========================
 df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce").fillna(34.5)
 df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce").fillna(9.5)
@@ -79,85 +73,15 @@ kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
 df["Cluster"] = kmeans.fit_predict(df[["Latitude", "Longitude"]])
 
 # =========================
-# LOAD MODEL (AVEC GESTION D'ERREUR ET RÉENTRAÎNEMENT)
+# LOAD MODEL
 # =========================
 model_name = st.sidebar.selectbox(
     "Choisir modèle",
     ["GradientBoosting", "XGBoost", "RandomForest", "SVM", "KNN"]
 )
 
-model_path = f"models/{model_name}.pkl"
-
-def prepare_features(dataframe):
-    """Prépare les features pour l'entraînement"""
-    df_model = dataframe.copy()
-    
-    # One-hot encoding pour les variables catégorielles
-    categorical_cols = ["Zone", "Gouvernorat", "Mois"]
-    df_encoded = pd.get_dummies(df_model, columns=categorical_cols, drop_first=True)
-    
-    # Définir les colonnes de features (exclure les targets et metadata)
-    exclude_cols = ["Tués", "Blessés", "Dangereux", "Arrondissement", 
-                   "Cluster", "Latitude", "Longitude"]
-    feature_cols = [col for col in df_encoded.columns if col not in exclude_cols]
-    
-    return df_encoded, feature_cols
-
-def train_and_save_models(df_encoded, feature_cols):
-    """Entraîne et sauvegarde tous les modèles"""
-    st.info("🔄 Première exécution : entraînement des modèles en cours...")
-    
-    X = df_encoded[feature_cols]
-    y = df_encoded["Dangereux"]
-    
-    models = {
-        "GradientBoosting": GradientBoostingClassifier(random_state=42),
-        "XGBoost": XGBClassifier(random_state=42, eval_metric='logloss'),
-        "RandomForest": RandomForestClassifier(random_state=42),
-        "SVM": SVC(probability=True, random_state=42),
-        "KNN": KNeighborsClassifier()
-    }
-    
-    # Créer le dossier models s'il n'existe pas
-    os.makedirs("models", exist_ok=True)
-    
-    progress_bar = st.progress(0)
-    for idx, (name, mdl) in enumerate(models.items()):
-        mdl.fit(X, y)
-        joblib.dump(mdl, f"models/{name}.pkl")
-        progress_bar.progress((idx + 1) / len(models))
-    
-    # Sauvegarder les noms des features
-    joblib.dump(feature_cols, "models/features.pkl")
-    
-    st.success("✅ Tous les modèles ont été entraînés avec succès !")
-    progress_bar.empty()
-
-# Vérifier si les modèles existent et sont valides
-need_training = False
-
-if not os.path.exists(model_path) or not os.path.exists("models/features.pkl"):
-    need_training = True
-else:
-    # Essayer de charger pour vérifier la compatibilité
-    try:
-        _test_model = joblib.load(model_path)
-        _test_features = joblib.load("models/features.pkl")
-    except (AttributeError, Exception) as e:
-        st.warning(f"⚠️ Modèles existants incompatibles : {e}")
-        need_training = True
-
-if need_training:
-    df_encoded, feature_cols = prepare_features(df)
-    train_and_save_models(df_encoded, feature_cols)
-
-# Charger le modèle sélectionné et les features
-try:
-    model = joblib.load(model_path)
-    feature_cols = joblib.load("models/features.pkl")
-except Exception as e:
-    st.error(f"❌ Erreur lors du chargement du modèle : {e}")
-    st.stop()
+model = joblib.load(f"models/{model_name}.pkl")
+feature_cols = joblib.load("models/features.pkl")
 
 # =========================
 # STATS
@@ -181,7 +105,7 @@ df_filtered = df[
 ]
 
 # =========================
-# MAP
+# MAP (PRO FIXED)
 # =========================
 st.subheader("🗺️ Carte intelligente")
 
@@ -198,7 +122,10 @@ if "Prediction" in map_df.columns:
     map_df.loc[map_df["Prediction"] == "Danger", "Color"] = 1
     map_df.loc[map_df["Prediction"] == "Safe", "Color"] = 0
 
-fig_map = px.scatter_mapbox(
+# =========================
+# MODERN MAP (NO DEPRECATION)
+# =========================
+fig_map = px.scatter_map(
     map_df,
     lat="Latitude",
     lon="Longitude",
@@ -206,20 +133,22 @@ fig_map = px.scatter_mapbox(
     size="Nbre d'intersection",
     hover_name="Arrondissement",
     zoom=6,
-    height=500,
+    height=550,
     animation_frame="Mois"
 )
 
-fig_map.update_layout(mapbox_style="open-street-map")
+fig_map.update_layout(
+    margin=dict(l=0, r=0, t=0, b=0),
+)
 
-st.plotly_chart(fig_map, use_container_width=True)
+st.plotly_chart(fig_map, use_container_width="stretch")
 
 # =========================
-# HEATMAP
+# HEATMAP MODERNE
 # =========================
 st.subheader("🔥 Heatmap")
 
-fig_heat = px.density_mapbox(
+fig_heat = px.density_map(
     df,
     lat="Latitude",
     lon="Longitude",
@@ -227,11 +156,10 @@ fig_heat = px.density_mapbox(
     radius=25,
     center=dict(lat=34.5, lon=9.5),
     zoom=5,
-    mapbox_style="open-street-map",
     animation_frame="Mois"
 )
 
-st.plotly_chart(fig_heat, use_container_width=True)
+st.plotly_chart(fig_heat, use_container_width="stretch")
 
 # =========================
 # PREDICTION
@@ -245,29 +173,23 @@ mois = st.selectbox("Mois", df["Mois"].unique())
 securite = st.number_input("Sécurité", 0, 10, 0)
 intersections = st.number_input("Nbre intersections", 0, 50, 0)
 
-# Préparer les données d'entrée avec le même encodage que l'entraînement
-input_data_dict = {
+input_data = pd.DataFrame([{
     "Zone": zone,
     "Gouvernorat": gouv,
     "Mois": mois,
     "Sécurité": securite,
     "Nbre d'intersection": intersections
-}
-
-# Créer un DataFrame avec une ligne et encoder comme lors de l'entraînement
-input_df = pd.DataFrame([input_data_dict])
-input_encoded = pd.get_dummies(input_df, columns=["Zone", "Gouvernorat", "Mois"], drop_first=True)
-
-# Aligner avec les features d'entraînement
-input_encoded = input_encoded.reindex(columns=feature_cols, fill_value=0)
+}])
 
 if st.button("🚀 Predict"):
 
-    pred = model.predict(input_encoded)[0]
+    input_data = input_data.reindex(columns=feature_cols)
+
+    pred = model.predict(input_data)[0]
 
     proba = 0
     if hasattr(model, "predict_proba"):
-        proba = model.predict_proba(input_encoded)[0].max()
+        proba = model.predict_proba(input_data)[0].max()
 
     lat, lon = coords.get(gouv, (34.5, 9.5))
     lat += np.random.uniform(-0.03, 0.03)
@@ -302,11 +224,9 @@ if st.button("🧹 Clear Predictions"):
 st.subheader("📉 Confusion Matrix")
 
 if st.button("Afficher Matrix"):
-    # Préparer les données comme lors de l'entraînement
-    df_encoded, _ = prepare_features(df)
-    
-    X = df_encoded[feature_cols]
-    y = df_encoded["Dangereux"]
+
+    X = df[feature_cols]
+    y = df["Dangereux"]
 
     y_pred = model.predict(X)
 
