@@ -81,8 +81,8 @@ model_name = st.sidebar.selectbox(
     ["GradientBoosting", "XGBoost", "RandomForest", "SVM", "KNN"]
 )
 
-model = joblib.load(f"{model_name}.pkl")
-feature_cols = joblib.load("features.pkl")
+model = joblib.load(f"models/{model_name}.pkl")
+feature_cols = joblib.load("models/features.pkl")
 
 # =========================
 # STATS
