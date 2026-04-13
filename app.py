@@ -7,12 +7,17 @@ from sklearn.cluster import KMeans
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from xgboost import XGBClassifier
+import os
 
 # =========================
 # CONFIG
 # =========================
-st.set_page_config(page_title="🚦 Smart PN Dashboard", layout="wide")
-st.title("🚦 Smart Dashboard - Zones Dangereuses 🇹🇳")
+st.set_page_config(page_title=" Smart PN Dashboard", layout="wide")
+st.title(" Smart Dashboard - Zones Dangereuses 🇹🇳")
 
 # =========================
 # SESSION STATE
@@ -74,15 +79,85 @@ kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
 df["Cluster"] = kmeans.fit_predict(df[["Latitude", "Longitude"]])
 
 # =========================
-# LOAD MODEL
+# LOAD MODEL (AVEC GESTION D'ERREUR ET RÉENTRAÎNEMENT)
 # =========================
 model_name = st.sidebar.selectbox(
     "Choisir modèle",
     ["GradientBoosting", "XGBoost", "RandomForest", "SVM", "KNN"]
 )
 
-model = joblib.load(f"models/{model_name}.pkl")
-feature_cols = joblib.load("models/features.pkl")
+model_path = f"models/{model_name}.pkl"
+
+def prepare_features(dataframe):
+    """Prépare les features pour l'entraînement"""
+    df_model = dataframe.copy()
+    
+    # One-hot encoding pour les variables catégorielles
+    categorical_cols = ["Zone", "Gouvernorat", "Mois"]
+    df_encoded = pd.get_dummies(df_model, columns=categorical_cols, drop_first=True)
+    
+    # Définir les colonnes de features (exclure les targets et metadata)
+    exclude_cols = ["Tués", "Blessés", "Dangereux", "Arrondissement", 
+                   "Cluster", "Latitude", "Longitude"]
+    feature_cols = [col for col in df_encoded.columns if col not in exclude_cols]
+    
+    return df_encoded, feature_cols
+
+def train_and_save_models(df_encoded, feature_cols):
+    """Entraîne et sauvegarde tous les modèles"""
+    st.info("🔄 Première exécution : entraînement des modèles en cours...")
+    
+    X = df_encoded[feature_cols]
+    y = df_encoded["Dangereux"]
+    
+    models = {
+        "GradientBoosting": GradientBoostingClassifier(random_state=42),
+        "XGBoost": XGBClassifier(random_state=42, eval_metric='logloss'),
+        "RandomForest": RandomForestClassifier(random_state=42),
+        "SVM": SVC(probability=True, random_state=42),
+        "KNN": KNeighborsClassifier()
+    }
+    
+    # Créer le dossier models s'il n'existe pas
+    os.makedirs("models", exist_ok=True)
+    
+    progress_bar = st.progress(0)
+    for idx, (name, mdl) in enumerate(models.items()):
+        mdl.fit(X, y)
+        joblib.dump(mdl, f"models/{name}.pkl")
+        progress_bar.progress((idx + 1) / len(models))
+    
+    # Sauvegarder les noms des features
+    joblib.dump(feature_cols, "models/features.pkl")
+    
+    st.success("✅ Tous les modèles ont été entraînés avec succès !")
+    progress_bar.empty()
+
+# Vérifier si les modèles existent et sont valides
+need_training = False
+
+if not os.path.exists(model_path) or not os.path.exists("models/features.pkl"):
+    need_training = True
+else:
+    # Essayer de charger pour vérifier la compatibilité
+    try:
+        _test_model = joblib.load(model_path)
+        _test_features = joblib.load("models/features.pkl")
+    except (AttributeError, Exception) as e:
+        st.warning(f"⚠️ Modèles existants incompatibles : {e}")
+        need_training = True
+
+if need_training:
+    df_encoded, feature_cols = prepare_features(df)
+    train_and_save_models(df_encoded, feature_cols)
+
+# Charger le modèle sélectionné et les features
+try:
+    model = joblib.load(model_path)
+    feature_cols = joblib.load("models/features.pkl")
+except Exception as e:
+    st.error(f"❌ Erreur lors du chargement du modèle : {e}")
+    st.stop()
 
 # =========================
 # STATS
@@ -170,23 +245,29 @@ mois = st.selectbox("Mois", df["Mois"].unique())
 securite = st.number_input("Sécurité", 0, 10, 0)
 intersections = st.number_input("Nbre intersections", 0, 50, 0)
 
-input_data = pd.DataFrame([{
+# Préparer les données d'entrée avec le même encodage que l'entraînement
+input_data_dict = {
     "Zone": zone,
     "Gouvernorat": gouv,
     "Mois": mois,
     "Sécurité": securite,
     "Nbre d'intersection": intersections
-}])
+}
+
+# Créer un DataFrame avec une ligne et encoder comme lors de l'entraînement
+input_df = pd.DataFrame([input_data_dict])
+input_encoded = pd.get_dummies(input_df, columns=["Zone", "Gouvernorat", "Mois"], drop_first=True)
+
+# Aligner avec les features d'entraînement
+input_encoded = input_encoded.reindex(columns=feature_cols, fill_value=0)
 
 if st.button("🚀 Predict"):
 
-    input_data = input_data.reindex(columns=feature_cols)
-
-    pred = model.predict(input_data)[0]
+    pred = model.predict(input_encoded)[0]
 
     proba = 0
     if hasattr(model, "predict_proba"):
-        proba = model.predict_proba(input_data)[0].max()
+        proba = model.predict_proba(input_encoded)[0].max()
 
     lat, lon = coords.get(gouv, (34.5, 9.5))
     lat += np.random.uniform(-0.03, 0.03)
@@ -221,9 +302,11 @@ if st.button("🧹 Clear Predictions"):
 st.subheader("📉 Confusion Matrix")
 
 if st.button("Afficher Matrix"):
-
-    X = df[feature_cols]
-    y = df["Dangereux"]
+    # Préparer les données comme lors de l'entraînement
+    df_encoded, _ = prepare_features(df)
+    
+    X = df_encoded[feature_cols]
+    y = df_encoded["Dangereux"]
 
     y_pred = model.predict(X)
 
