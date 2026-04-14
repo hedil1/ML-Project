@@ -8,6 +8,13 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import warnings
+import sklearn
+import xgboost
+from xgboost import XGBClassifier
+
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
 warnings.filterwarnings('ignore')
 
 # =========================
