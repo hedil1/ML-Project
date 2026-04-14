@@ -1,9 +1,9 @@
 ---
-title: "🚦 Prédiction des Passages à Niveau Dangereux"
-author: "Ton Nom"
+title: " Prédiction des Passages à Niveau Dangereux en Tunisie"
+author: "Hedil Rouatbi"
 format:
   revealjs:
-    theme: [dark, custom.scss]
+    theme: dark
     slide-number: true
     code-tools: true
     transition: fade
@@ -11,114 +11,202 @@ format:
     center: true
     controls: true
     highlight-style: github
-    background-transition: fade
+    self-contained: true
+    embed-resources: true
+    footer: "Encadré par: Pr. Khemais Abdallah"
 ---
 
+# Slide 1 - Introduction
 
-## 🚦 Introduction
+##  Introduction
 
-Ce projet applique le Machine Learning pour analyser la sécurité des passages à niveau en Tunisie.
+### Contexte
+La sécurité aux passages à niveau constitue un enjeu majeur de sécurité routière et ferroviaire en Tunisie.
 
-🎯 Objectif :
-- Étudier les données
-- Construire des modèles ML
+### Problématique
+Peut-on prédire le caractère dangereux d'un passage à niveau (dangereux / non dangereux) à partir de ses caractéristiques ?
+
+### Objectifs
+- Analyser les données des accidents SNCFT
+- Construire des modèles de Machine Learning
 - Prédire les zones dangereuses
+- Déployer un dashboard interactif
 
 
-## 🎯 Problématique
+# Slide 2 - Dataset & Prétraitement
 
-Peut-on prédire si un passage à niveau est :
+##  Dataset & Prétraitement
 
-✔ dangereux  
-❌ non dangereux  
-
-à partir de ses caractéristiques ?
-
-## 📊 Dataset & Prétraitement
-
-✔ Nettoyage des données  
-✔ Encodage des variables  
-✔ Normalisation  
-✔ Feature engineering  
-
-📁 Dataset : dataset_final.xlsx
+### Dataset initial
+- **Fichier brut** : `Accidents SNCFT`
+- **Fichier final** : `dataset_final.xlsx`
 
 
-## ⚙️ Pipeline Machine Learning
+# Slide 3 - Variables utilisées
 
-1. Chargement des données  
-2. Préprocessing  
-3. Split Train/Test  
-4. Entraînement des modèles  
-5. Évaluation  
-6. Comparaison
+##  Variables utilisées
 
-## 🤖 Modèles testés
+- **Zone** - Nom du passage à niveau
+- **Gouvernorat** - Région administrative
+- **Mois** - Période de l'accident
+- **Sécurité** - Niveau de sécurité (0-10)
+- **Nbre d'intersections** - Complexité du passage
+- **Tués/Blessés** - Nombre de victimes
 
-```{python}
-from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import cross_val_score
 
-rf = Pipeline([
-    ("model", RandomForestClassifier(n_estimators=200, random_state=42))
-])
+# Slide 4 - Pipeline Machine Learning
 
-scores = cross_val_score(rf, X, y, cv=5)
+##  Pipeline Machine Learning
 
-print("Random Forest Accuracy:", scores.mean())
+### Étapes réalisées
 
+| Étape | Action | Méthode |
+|-------|--------|---------|
+| 1 | Chargement | Lecture Excel |
+| 2 | Nettoyage | Suppression colonnes inutiles |
+| 3 | Encodage | OneHotEncoder |
+| 4 | Split | 80% Train / 20% Test |
+| 5 | Normalisation | StandardScaler |
+| 6 | Entraînement | 5 modèles ML |
+| 7 | Validation | Cross-validation (5 folds) |
+
+
+# Slide 5 - Les 5 Modèles Testés
+
+##  Les 5 Modèles Testés
+
+### Résultats bruts avant optimisation
+
+| Modèle | Accuracy |
+|--------|----------|
+| Random Forest | 0.95 |
+| XGBoost | 0.97 |
+| **Gradient Boosting** | **0.98** |
+| SVM | 0.90 |
+| KNN | 0.82 |
+
+
+# Slide 6 - Résultats & Comparaison
+
+##  Résultats & Comparaison
+
+### Accuracy sur test simple
+
+| Modèle | Accuracy | Rang |
+|--------|----------|------|
+| **Gradient Boosting** | **98.97%** | 1er |
+| XGBoost | 98.28% | 2e |
+| Random Forest | 96.56% | 3e |
+| SVM | 90.35% | 4e |
+| KNN | 82.08% | 5e |
+
+
+# Slide 7 - Courbe de comparaison
+
+##  Courbe de comparaison
+
+<div style="text-align: center;">
+<svg width="550" height="320" viewBox="0 0 550 320" style="background: white; border-radius: 10px;">
+  <line x1="70" y1="270" x2="520" y2="270" stroke="black" stroke-width="2"/>
+  <line x1="70" y1="270" x2="70" y2="30" stroke="black" stroke-width="2"/>
+  <text x="295" y="310" text-anchor="middle" font-size="13">Modèles</text>
+  <text x="25" y="150" text-anchor="middle" font-size="13" transform="rotate(-90,25,150)">Accuracy (%)</text>
+  <text x="295" y="22" text-anchor="middle" font-size="14" font-weight="bold">Performance des 5 modèles</text>
+  <rect x="80" y="33" width="70" height="237" fill="#2ecc71" rx="5"/>
+  <text x="115" y="290" text-anchor="middle" font-size="9" font-weight="bold">Gradient</text>
+  <text x="115" y="28" text-anchor="middle" font-size="10" fill="#2ecc71" font-weight="bold">98.97%</text>
+  <rect x="165" y="38" width="70" height="232" fill="#3498db" rx="5"/>
+  <text x="200" y="290" text-anchor="middle" font-size="9" font-weight="bold">XGBoost</text>
+  <text x="200" y="33" text-anchor="middle" font-size="10" fill="#3498db">98.28%</text>
+  <rect x="250" y="55" width="70" height="215" fill="#f39c12" rx="5"/>
+  <text x="285" y="290" text-anchor="middle" font-size="9" font-weight="bold">RF</text>
+  <text x="285" y="50" text-anchor="middle" font-size="10" fill="#f39c12">96.56%</text>
+  <rect x="335" y="101" width="70" height="169" fill="#e74c3c" rx="5"/>
+  <text x="370" y="290" text-anchor="middle" font-size="9" font-weight="bold">SVM</text>
+  <text x="370" y="96" text-anchor="middle" font-size="10" fill="#e74c3c">90.35%</text>
+  <rect x="420" y="152" width="70" height="118" fill="#9b59b6" rx="5"/>
+  <text x="455" y="290" text-anchor="middle" font-size="9" font-weight="bold">KNN</text>
+  <text x="455" y="147" text-anchor="middle" font-size="10" fill="#9b59b6">82.08%</text>
+  <line x1="70" y1="30" x2="520" y2="30" stroke="#ccc" stroke-width="1" stroke-dasharray="5,5"/>
+</svg>
+</div>
+
+
+# Slide 8 - Validation Croisée
+
+##  Validation Croisée (5 folds)
+
+### Résultats de la validation croisée
+
+| Métrique | Valeur |
+|----------|--------|
+| **Accuracy moyenne (CV)** | **88.6%** |
+| **Écart-type (Std)** | **0.079** |
+
+### Analyse des résultats
+- L'accuracy moyenne (88.6%) est **inférieure** aux résultats du test simple (98%)
+- L'écart-type de **0.079** montre une **variabilité modérée**
+- La validation croisée donne une **estimation plus réaliste** des performances
+
+### Pourquoi cette différence ?
+- Les performances varient selon les sous-ensembles de données
+- Permet d'**éviter les conclusions biaisées**
+- Confirme la **robustesse relative** du modèle
+
+### Comparaison des approches
+
+| Approche | Gradient Boosting | Random Forest |
+|----------|-------------------|---------------|
+| Test simple | 98.97% | 96.56% |
+| Validation croisée | 88.6% | 87.5% |
+
+
+# Slide 9 - Interprétation
+
+##  Interprétation
+
+- **Modèles basés sur les arbres** : les plus performants
+- **KNN et SVM** : montrent leurs limites sur données complexes
+
+
+# Slide 10 - Choix Final du Modèle
+
+##  Pourquoi Gradient Boosting ?
+
+- **Meilleure performance** sur test simple (98.97%)
+- **Gère les relations non linéaires** complexes
+- **Importance des features** interprétable
+- **Bon compromis** performance/vitesse
+
+### Comparaison des modèles rejetés
+
+| Modèle | Raison du rejet |
+|--------|-----------------|
+| XGBoost | Très bon mais plus complexe à paramétrer |
+| Random Forest | Performances inférieures |
+| SVM | Temps d'entraînement élevé |
+| KNN | Sensible aux valeurs aberrantes |
+
+
+# Slide 11 - Dashboard & Conclusion
+
+##  Application Streamlit
+
+### Lien d'accès
+ **[https://ml-project-txgok9tgpaavaymrpjybw4.streamlit.app/](https://ml-project-txgok9tgpaavaymrpjybw4.streamlit.app/)**
+
+### Fonctionnalités
+- Prédiction en temps réel (5 modèles disponibles)
+- Carte interactive des zones dangereuses
+- Heatmap dynamique filtrable par mois
+- Exploration par gouvernorat et lieu
+- Statistiques détaillées
+
+### Perspectives
+- Intégration de données en temps réel
+- Optimisation des hyperparamètres (GridSearch)
+- Extension à d'autres pays
+- Application mobile
 
 ---
-
-# 📌 SLIDE 6 — AUTRES MODÈLES
-
-```markdown id="s6"
-## ⚡ Comparaison des modèles
-
-```{python}
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-
-svm = SVC(kernel="rbf")
-knn = KNeighborsClassifier(n_neighbors=5)
-
-print("SVM:", cross_val_score(svm, X, y, cv=5).mean())
-print("KNN:", cross_val_score(knn, X, y, cv=5).mean())
-
-
----
-
-# 📌 SLIDE 7 — RÉSULTATS
-
-```markdown id="s7"
-## 📈 Résultats
-
-| Modèle            | Accuracy |
-|------------------|----------|
-| Random Forest    | 1.00     |
-| XGBoost          | 0.98     |
-| SVM              | 0.94     |
-| KNN              | 0.90     |
-
-🏆 Meilleur modèle : Random Forest
-
-
-## 🧠 Conclusion
-
-✔ Pipeline ML complet  
-✔ Bonne performance globale  
-✔ Random Forest le plus stable  
-
-⚠️ Limites :
-- dataset limité
-- possible overfitting (accuracy très haute)
-- besoin de plus de données réelles
-
-🚀 Perspectives :
-- amélioration des features
-- déploiement Streamlit
-- optimisation hyperparamètres
-
-
 
