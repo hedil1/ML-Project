@@ -14,14 +14,18 @@ warnings.filterwarnings('ignore')
 # =========================
 # CONFIG
 # =========================
-st.set_page_config(page_title=" Smart PN Dashboard", layout="wide")
-st.title(" Smart Dashboard - Zones Dangereuses 🇹🇳")
+st.set_page_config(page_title="🚦 Smart PN Dashboard", layout="wide")
+st.title("🚦 Smart Dashboard - Zones Dangereuses 🇹🇳")
 
 # =========================
 # SESSION STATE
 # =========================
 if "pred_points" not in st.session_state:
     st.session_state.pred_points = []
+if "selected_zone" not in st.session_state:
+    st.session_state.selected_zone = None
+if "selected_gouv" not in st.session_state:
+    st.session_state.selected_gouv = None
 
 # =========================
 # LOAD DATA (CACHED)
@@ -81,24 +85,18 @@ def retrain_models():
     from sklearn.neighbors import KNeighborsClassifier
     from xgboost import XGBClassifier
     
-    with st.spinner(" Ré-entraînement des modèles en cours... (2-3 minutes)"):
-        # Charger les données
+    with st.spinner("🔄 Ré-entraînement des modèles en cours... (2-3 minutes)"):
         df = pd.read_excel("dataset_final.xlsx")
         df.columns = df.columns.str.strip()
         df["Dangereux"] = (df["Tués"] > 0).astype(int)
         
-        # Features
         FEATURES = ["Zone", "Gouvernorat", "Mois", "Sécurité", "Nbre d'intersection"]
         X = df[FEATURES]
         y = df["Dangereux"]
         
-        # Créer le dossier models
         os.makedirs("models", exist_ok=True)
-        
-        # Sauvegarder les features
         joblib.dump(FEATURES, "models/features.pkl")
         
-        # Prétraitement
         cat_cols = X.select_dtypes(include="object").columns
         num_cols = X.select_dtypes(exclude="object").columns
         
@@ -113,7 +111,6 @@ def retrain_models():
             ]), cat_cols)
         ])
         
-        # Modèles
         models_dict = {
             "GradientBoosting": GradientBoostingClassifier(n_estimators=100, random_state=42),
             "XGBoost": XGBClassifier(n_estimators=100, random_state=42, eval_metric="logloss"),
@@ -122,7 +119,6 @@ def retrain_models():
             "KNN": KNeighborsClassifier(n_neighbors=5)
         }
         
-        # Entraînement
         progress_bar = st.progress(0)
         for idx, (name, clf) in enumerate(models_dict.items()):
             st.write(f"📈 Entraînement de {name}...")
@@ -137,13 +133,15 @@ def retrain_models():
 # =========================
 # LOAD MODEL
 # =========================
+@st.cache_resource
 def load_model(model_name):
     """Charge un modèle spécifique"""
     try:
         model = joblib.load(f"models/{model_name}.pkl")
-        return model, None
+        return model
     except Exception as e:
-        return None, str(e)
+        st.error(f"Erreur chargement modèle: {e}")
+        return None
 
 # =========================
 # LOAD DATA
@@ -153,22 +151,26 @@ df, coords = load_data()
 # =========================
 # SIDEBAR - MODEL SELECTION
 # =========================
-st.sidebar.header(" Configuration")
+st.sidebar.header("🤖 Configuration Machine Learning")
+
+# Sélection du modèle d'entraînement
 model_name = st.sidebar.selectbox(
-    "Choisir modèle",
-    ["GradientBoosting", "XGBoost", "RandomForest", "SVM", "KNN"]
+    "🎯 Choisir le modèle de prédiction:",
+    ["GradientBoosting", "XGBoost", "RandomForest", "SVM", "KNN"],
+    help="Sélectionnez l'algorithme ML pour les prédictions"
 )
 
+# Bouton pour ré-entraîner
+if st.sidebar.button("🔄 Ré-entraîner tous les modèles", type="primary"):
+    if retrain_models():
+        st.rerun()
 
+# Charger le modèle
+model = load_model(model_name)
 
-
-# =========================
-# STATS
-# =========================
-col1, col2, col3 = st.columns(3)
-col1.metric("Total", len(df))
-col2.metric("Danger", df["Dangereux"].sum())
-col3.metric("Safe", len(df) - df["Dangereux"].sum())
+if model is None:
+    st.warning("⚠️ Modèle non disponible. Cliquez sur 'Ré-entraîner' pour créer les modèles.")
+    st.stop()
 
 # =========================
 # FEATURES
@@ -179,11 +181,75 @@ except:
     feature_cols = ["Zone", "Gouvernorat", "Mois", "Sécurité", "Nbre d'intersection"]
 
 # =========================
+# STATS GÉNÉRALES
+# =========================
+st.subheader("📊 Statistiques générales")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total accidents", len(df))
+col2.metric("Zones dangereuses", df["Dangereux"].sum())
+col3.metric("Zones sûres", len(df) - df["Dangereux"].sum())
+col4.metric("Taux de danger", f"{df['Dangereux'].mean()*100:.1f}%")
+
+# =========================
+# SÉLECTION DE ZONE INTERACTIVE
+# =========================
+st.subheader("📍 Exploration par zone")
+
+col_zone1, col_zone2 = st.columns(2)
+
+with col_zone1:
+    # Sélection de la zone
+    zone_selected = st.selectbox(
+        "🏙️ Choisir une zone:",
+        options=sorted(df["Zone"].unique()),
+        index=0 if st.session_state.selected_zone is None else list(df["Zone"].unique()).index(st.session_state.selected_zone) if st.session_state.selected_zone in df["Zone"].unique() else 0
+    )
+    st.session_state.selected_zone = zone_selected
+
+# Filtrer les gouvernorats de la zone sélectionnée
+gouv_options = df[df["Zone"] == zone_selected]["Gouvernorat"].unique()
+with col_zone2:
+    gouv_selected = st.selectbox(
+        "🏛️ Choisir un gouvernorat:",
+        options=sorted(gouv_options),
+        index=0 if st.session_state.selected_gouv is None else list(gouv_options).index(st.session_state.selected_gouv) if st.session_state.selected_gouv in gouv_options else 0
+    )
+    st.session_state.selected_gouv = gouv_selected
+
+# Afficher les informations de la zone sélectionnée
+df_zone = df[(df["Zone"] == zone_selected) & (df["Gouvernorat"] == gouv_selected)]
+
+if len(df_zone) > 0:
+    st.subheader(f"📋 Informations pour {zone_selected} - {gouv_selected}")
+    
+    # Statistiques de la zone
+    col_z1, col_z2, col_z3, col_z4 = st.columns(4)
+    with col_z1:
+        st.metric("Total accidents", len(df_zone))
+    with col_z2:
+        st.metric("Zones dangereuses", df_zone["Dangereux"].sum())
+    with col_z3:
+        st.metric("Taux de danger", f"{df_zone['Dangereux'].mean()*100:.1f}%")
+    with col_z4:
+        st.metric("Total tués", df_zone["Tués"].sum())
+    
+    # Statut de dangerosité
+    est_dangereuse = df_zone["Dangereux"].sum() > 0
+    if est_dangereuse:
+        st.error(f"🔴 **{zone_selected} - {gouv_selected} est une ZONE DANGEREUSE**")
+    else:
+        st.success(f"🟢 **{zone_selected} - {gouv_selected} est une ZONE SÛRE**")
+    
+    # Afficher les données détaillées
+    with st.expander("📊 Voir les détails des accidents"):
+        st.dataframe(df_zone[["Mois", "Tués", "Blessés", "Dangereux", "Sécurité", "Nbre d'intersection"]], use_container_width=True)
+
+# =========================
 # HEATMAP INTERACTIVE PAR MOIS
 # =========================
-st.subheader("🔥 Analyse des zones dangereuses par mois")
+st.subheader("🔥 Carte de chaleur des zones dangereuses")
 
-# Sélecteur de mois
+# Sélecteur de mois avec slider
 selected_month = st.select_slider(
     "📅 Choisissez un mois:",
     options=sorted(df["Mois"].unique()),
@@ -204,123 +270,93 @@ if len(df_month) > 0:
         center=dict(lat=34.5, lon=9.5),
         zoom=5.5,
         mapbox_style="open-street-map",
-        title=f"🔥 Densité des zones dangereuses - Mois: {selected_month}",
+        title=f"🔥 Densité des zones dangereuses - {selected_month}",
         color_continuous_scale="Reds",
         opacity=0.7,
-        labels={"Dangereux": "Niveau de danger"}
+        labels={"Dangereux": "Niveau de danger"},
+        hover_data={"Zone": True, "Gouvernorat": True, "Tués": True}
     )
     
-    fig_heat.update_layout(
-        height=550,
-        margin=dict(l=0, r=0, t=40, b=0)
-    )
-    
+    fig_heat.update_layout(height=550, margin=dict(l=0, r=0, t=40, b=0))
     st.plotly_chart(fig_heat, use_container_width=True)
     
     # Statistiques du mois
-    st.subheader(f"📊 Statistiques pour {selected_month}")
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
         st.metric("Total accidents", len(df_month))
-    with col_b:
+    with col_m2:
         st.metric("Zones dangereuses", df_month["Dangereux"].sum())
-    with col_c:
+    with col_m3:
         st.metric("Taux de danger", f"{df_month['Dangereux'].mean()*100:.1f}%")
     
     # Liste des zones dangereuses du mois
-    st.subheader(f"📍 Zones dangereuses en {selected_month}")
-    zones_dangereuses = df_month[df_month["Dangereux"] == 1][["Zone", "Gouvernorat", "Tués", "Blessés"]]
+    zones_danger = df_month[df_month["Dangereux"] == 1][["Zone", "Gouvernorat", "Tués", "Blessés", "Sécurité"]]
     
-    if len(zones_dangereuses) > 0:
-        st.dataframe(zones_dangereuses, use_container_width=True)
+    if len(zones_danger) > 0:
+        st.subheader(f"⚠️ Zones dangereuses en {selected_month}")
+        st.dataframe(zones_danger, use_container_width=True)
         
         # Top 5 des plus dangereuses
-        st.subheader("⚠️ Top 5 des zones les plus critiques")
         top_danger = df_month.nlargest(5, "Tués")[["Zone", "Gouvernorat", "Tués", "Blessés"]]
+        st.subheader("🔥 Top 5 des zones les plus critiques")
         st.dataframe(top_danger, use_container_width=True)
     else:
-        st.info(f"✅ Aucune zone dangereuse enregistrée pour {selected_month}")
-else:
-    st.warning(f"⚠️ Aucune donnée pour le mois {selected_month}")
+        st.success(f"✅ Aucune zone dangereuse enregistrée pour {selected_month}")
 
 # =========================
-# PREDICTION
+# PRÉDICTION PERSONNALISÉE
 # =========================
-st.subheader("🔮 Nouvelle prédiction")
+st.subheader("🔮 Prédiction personnalisée")
 
-col_a, col_b = st.columns(2)
-
-with col_a:
-    zone = st.selectbox("Zone", df["Zone"].unique())
-    gouv = st.selectbox("Gouvernorat", df["Gouvernorat"].unique())
-    mois = st.selectbox("Mois", df["Mois"].unique())
-
-with col_b:
-    securite = st.number_input("Sécurité (0-10)", 0, 10, 5)
-    intersections = st.number_input("Nbre intersections", 0, 50, 5)
-
-if st.button("🚀 Predict", type="primary"):
-    # Créer le DataFrame d'entrée
-    input_data = pd.DataFrame([{
-        "Zone": zone,
-        "Gouvernorat": gouv,
-        "Mois": mois,
-        "Sécurité": securite,
-        "Nbre d'intersection": intersections
-    }])
+with st.expander("🎯 Faire une prédiction pour une nouvelle zone", expanded=True):
+    col_p1, col_p2 = st.columns(2)
     
-    # Afficher les données pour débogage
-    with st.expander("📋 Détails de la prédiction"):
-        st.write("**Données envoyées:**")
-        st.dataframe(input_data)
-        st.write(f"**Features attendues par le modèle:** {feature_cols}")
+    with col_p1:
+        zone_pred = st.selectbox("Zone", df["Zone"].unique(), key="pred_zone")
+        gouv_pred = st.selectbox("Gouvernorat", df["Gouvernorat"].unique(), key="pred_gouv")
+        mois_pred = st.selectbox("Mois", df["Mois"].unique(), key="pred_mois")
     
-    try:
-        # Prédiction
-        pred = model.predict(input_data)[0]
+    with col_p2:
+        securite_pred = st.slider("Niveau de sécurité (0-10)", 0, 10, 5, key="pred_sec")
+        intersections_pred = st.number_input("Nombre d'intersections", 0, 50, 5, key="pred_inter")
+    
+    if st.button("🚀 Lancer la prédiction", type="primary", use_container_width=True):
+        input_data = pd.DataFrame([{
+            "Zone": zone_pred,
+            "Gouvernorat": gouv_pred,
+            "Mois": mois_pred,
+            "Sécurité": securite_pred,
+            "Nbre d'intersection": intersections_pred
+        }])
         
-        proba = 0
-        if hasattr(model, "predict_proba"):
-            proba = model.predict_proba(input_data)[0].max()
-        
-        # Afficher le résultat
-        st.markdown("---")
-        if pred == 1:
-            st.error(f"🔴 **ZONE DANGEREUSE** 🔴\n\nProbabilité: {proba:.2%}")
-        else:
-            st.success(f"🟢 **ZONE SÛRE** 🟢\n\nProbabilité: {(1-proba)*100:.2f}%")
-        
-        st.metric("Niveau de confiance", f"{proba*100:.2f}%")
-        
-        # Ajouter à la session (optionnel)
-        lat, lon = coords.get(gouv, (34.5, 9.5))
-        st.session_state.pred_points.append({
-            "Latitude": lat,
-            "Longitude": lon,
-            "Prediction": "Danger" if pred == 1 else "Safe",
-            "Confidence": proba,
-            "Zone": zone,
-            "Gouvernorat": gouv,
-            "Mois": mois
-        })
-        
-    except Exception as e:
-        st.error(f"❌ Erreur de prédiction: {e}")
-        st.write("Structure du modèle:", model)
+        try:
+            pred = model.predict(input_data)[0]
+            
+            proba = 0
+            if hasattr(model, "predict_proba"):
+                proba = model.predict_proba(input_data)[0].max()
+            
+            st.markdown("---")
+            col_r1, col_r2 = st.columns(2)
+            
+            with col_r1:
+                if pred == 1:
+                    st.error(f"🔴 **ZONE DANGEREUSE** 🔴\n\nProbabilité: {proba:.2%}")
+                else:
+                    st.success(f"🟢 **ZONE SÛRE** 🟢\n\nProbabilité: {(1-proba)*100:.2f}%")
+            
+            with col_r2:
+                st.metric("Niveau de confiance", f"{proba*100:.2f}%")
+                st.info(f"📍 {zone_pred} - {gouv_pred} | Mois: {mois_pred}")
+            
+        except Exception as e:
+            st.error(f"❌ Erreur de prédiction: {e}")
 
 # =========================
-# CLEAR PREDICTIONS
+# PERFORMANCE DU MODÈLE
 # =========================
-if st.button("🧹 Clear Predictions"):
-    st.session_state.pred_points = []
-    st.success("✅ Prédictions effacées!")
-    st.rerun()
-
-# =========================
-# CONFUSION MATRIX
-# =========================
-with st.expander("📊 Voir la matrice de confusion"):
-    if st.button("Afficher Matrice de Confusion", key="conf_matrix"):
+with st.expander("📊 Performance du modèle actuel"):
+    if st.button("Afficher la matrice de confusion", key="show_cm"):
         try:
             df_temp = pd.read_excel("dataset_final.xlsx")
             df_temp.columns = df_temp.columns.str.strip()
@@ -347,7 +383,7 @@ with st.expander("📊 Voir la matrice de confusion"):
             st.metric("Précision globale", f"{accuracy*100:.2f}%")
             
         except Exception as e:
-            st.error(f"Erreur lors du calcul: {e}")
+            st.error(f"Erreur: {e}")
 
 # =========================
 # SIDEBAR INFO
@@ -355,15 +391,19 @@ with st.expander("📊 Voir la matrice de confusion"):
 st.sidebar.markdown("---")
 st.sidebar.info(
     f"""
-    **Légende:**
+    **📌 Informations:**
+    
+    - **Modèle actif:** {model_name}
+    - **Total données:** {len(df)}
+    
+    **🎯 Fonctionnalités:**
+    - Exploration par zone/gouvernorat
+    - Heatmap interactive par mois
+    - Prédiction personnalisée
+    - Statistiques détaillées
+    
+    **📊 Légende:**
     - 🔴 Rouge: Zone dangereuse
     - 🟢 Vert: Zone sûre
-    
-    **Modèle actif:** {model_name}
-    
-    **Fonctionnalités:**
-    - Heatmap interactive par mois
-    - Liste des zones dangereuses
-    - Prédiction personnalisée
     """
 )
