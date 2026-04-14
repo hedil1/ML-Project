@@ -13,7 +13,8 @@ Peut-on prédire le caractère dangereux d’un passage à niveau à partir de s
 
 ##  Dataset
 
-- Fichier : `dataset_final.xlsx`
+- **Fichier** : `dataset_final.xlsx`
+- **Source** : Les accidents SNCFT 
 - Données sur les passages à niveau en Tunisie
 - Variables :
   - Zone
@@ -31,9 +32,10 @@ Peut-on prédire le caractère dangereux d’un passage à niveau à partir de s
 2. Nettoyage et preprocessing
 3. Encodage des variables
 4. Split Train / Test
-5. Entraînement des modèles
-6. Validation croisée
-7. Comparaison des performances
+5. Normalisation des données
+6. Entraînement des modèles
+7. Validation croisée (5 folds)
+8. Comparaison des performances
 
 ## Modèles utilisés
 
@@ -42,6 +44,8 @@ Peut-on prédire le caractère dangereux d’un passage à niveau à partir de s
 - Gradient Boosting
 - SVM
 - KNN
+
+
 
 ##  Résultats
 
@@ -53,6 +57,8 @@ Peut-on prédire le caractère dangereux d’un passage à niveau à partir de s
 | SVM              | 0.90     |
 | KNN              | 0.82     |
 
+**Meilleur modèle : Gradient Boosting (Accuracy 98.97%)**
+
 
 ##  Application Streamlit
 
@@ -63,7 +69,30 @@ Une application interactive permet :
 - Carte interactive
 - Bouton RUN pour tester les modèles
 
-### Lancer l'application :
+##  Application Streamlit
 
-```bash
-streamlit run streamlit/app.py
+https://ml-project-txgok9tgpaavaymrpjybw4.streamlit.app/
+
+
+
+### Fonctionnalités de l'application
+
+ **Prédiction en temps réel** - Testez n'importe quel passage à niveau  
+ **Carte interactive** - Visualisez les zones dangereuses  
+ **Heatmap dynamique** - Filtrage par mois  
+ **Exploration par gouvernorat** - Détails par lieu avec liste des passages  
+ **5 modèles ML** - Choisissez le modèle pour la prédiction  
+ **Statistiques détaillées** - Taux de danger, nombre de victimes
+
+ ### Lancer l'application localement
+
+ ```bash
+# Cloner le repository
+git clone https://github.com/hedil1/ML-Project.git
+cd ML-Project
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Lancer l'application
+streamlit run app.py
