@@ -14,8 +14,8 @@ warnings.filterwarnings('ignore')
 # =========================
 # CONFIG
 # =========================
-st.set_page_config(page_title="🚦 Smart PN Dashboard", layout="wide")
-st.title("🚦 Smart Dashboard - Zones Dangereuses 🇹🇳")
+st.set_page_config(page_title=" Smart PN Dashboard", layout="wide")
+st.title(" Smart Dashboard - Zones Dangereuses 🇹🇳")
 
 # =========================
 # SESSION STATE
@@ -81,7 +81,7 @@ def retrain_models():
     from sklearn.neighbors import KNeighborsClassifier
     from xgboost import XGBClassifier
     
-    with st.spinner("🔄 Ré-entraînement des modèles en cours... (2-3 minutes)"):
+    with st.spinner(" Ré-entraînement des modèles en cours... (2-3 minutes)"):
         # Charger les données
         df = pd.read_excel("dataset_final.xlsx")
         df.columns = df.columns.str.strip()
@@ -153,28 +153,14 @@ df, coords = load_data()
 # =========================
 # SIDEBAR - MODEL SELECTION
 # =========================
-st.sidebar.header("🤖 Configuration")
+st.sidebar.header(" Configuration")
 model_name = st.sidebar.selectbox(
     "Choisir modèle",
     ["GradientBoosting", "XGBoost", "RandomForest", "SVM", "KNN"]
 )
 
-# =========================
-# CHECK AND LOAD MODEL
-# =========================
-model, error = load_model(model_name)
 
-if error:
-    st.warning(f"⚠️ Modèle non compatible ou manquant: {error}")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔄 Ré-entraîner tous les modèles", type="primary"):
-            if retrain_models():
-                st.rerun()
-    with col2:
-        st.info("💡 Les modèles seront entraînés avec la version actuelle de scikit-learn")
-    st.stop()
+
 
 # =========================
 # STATS
